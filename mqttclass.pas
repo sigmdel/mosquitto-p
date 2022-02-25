@@ -108,6 +108,8 @@ type
       function Publish(const topic: ansistring; payloadlen: cint; var payload; qos: cint; retain: cbool): cint;
       function Publish(var mid: cint; const topic: ansistring; const payload: ansistring; qos: cint; retain: cbool): cint;
       function Publish(const topic: ansistring; const payload: ansistring; qos: cint; retain: cbool): cint;
+      function UnSubscribe(var mid: cint; const sub: ansistring): cint;
+      function UnSubscribe(const sub: ansistring): cint;
 
       procedure Log(const level: cint; const message: ansistring);
 
@@ -276,6 +278,15 @@ begin
   result:=mosquitto_subscribe(Fmosquitto, nil, PChar(sub), qos);
 end;
 
+function TMQTTConnection.UnSubscribe(var mid: cint; const sub: ansistring): cint;
+begin
+  result:=mosquitto_unsubscribe(Fmosquitto, @mid, PChar(sub));
+end;
+
+function TMQTTConnection.UnSubscribe(const sub: ansistring): cint;
+begin
+  result:=mosquitto_unsubscribe(Fmosquitto, nil, PChar(sub));
+end;
 
 function TMQTTConnection.Publish(var mid: cint; const topic: ansistring; payloadlen: cint; var payload; qos: cint; retain: cbool): cint;
 begin

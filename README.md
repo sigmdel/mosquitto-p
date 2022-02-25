@@ -30,19 +30,22 @@ asynchronous and behave equally on all platforms. This feature also works
 on Windows, without depending on pthreads on this platform, unlike
 libmosquitto itself.
 
-### Changes (sigmdel)
+### Changes (2022-02-25 sigmdel)
 
-This fork adds dynamic loading of the `mosquitto` library so that a Free 
-Pascal program will not crash on startup when the library is not 
-installed. Enable this feature by adding the `DYNAMIC_MOSQLIB` define
-in the project options. Check that the library was loaded with the 
-`mosquitto_lib_loaded()` function. That function always returns `True`
-the library is statically linked and represents the only change to 
-the original library when `DYNAMIC_MOSQLIB` is not defined.
+This fork adds dynamic loading of the `mosquitto` library in 
+`mosquitto.pas` so that a Free Pascal program will not crash on startup when
+the library is not installed. Enable this feature by adding the 
+`DYNAMIC_MOSQLIB` define in the project options. Check that the library was 
+loaded with the `mosquitto_lib_loaded()` function. That function always 
+returns `True` when the library is statically linked and represents the only 
+change to the original library when `DYNAMIC_MOSQLIB` is not defined.
 
 There must be an easier way to trap an error when a statically 
 linked library is not found or to test for the presence of the library
 before it is loaded. Anyone?
+
+Added `UnSubscribe` functions in `TMQTTConnection`. These were suggested
+by JacoFourie in issue #5: No Unsubscribe 2020-10-3.
 
 ### License
 
