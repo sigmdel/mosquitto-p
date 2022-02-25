@@ -25,10 +25,25 @@ Contributors:
  * http://github.com/chainq/mosquitto-p
  *}
 
+{*
+ * Dynamic loading of the mosquitto libray
+ * Copyright (c) 2021-2022 Michel Deslierres
+ *
+ * https://github.com/sigmdel/mosquitto-p
+ *
+ * If the DYNAMIC_MOSQLIB macro is defined the mosquitto library is loaded
+ * at run-time, otherwise the library is statically linked. See
+ * function mosquitto_lib_loaded().
+ *
+ * $DEFINE DYNAMIC_MOSQLIB could be defined here, but it is best to
+ * do that as an project option.
+ *}
+
 interface
 
 uses
-    ctypes;
+  ctypes {$IFDEF DYNAMIC_MOSQLIB}, dynlibs{$ENDIF};
+
 
 { This is a kludge, because apparently GCC is confused about
   how C booleans should work, and optimizes code away inside
@@ -163,6 +178,27 @@ type
  * mosquitto_publish()
  ***************************************************}
 
+
+ {*
+  * Function: mosquitto_lib_loaded
+  *
+  * Returns:
+  *     True if the mosquitto library was loaded during the program's
+  *         initialization
+  *
+  * If the DYNAMIC_MOSQLIB macro is not defined then the mosquitto library
+  * is statically linked. If the library is installed on the system, the
+  * function returns true. If the library is not installed on the system
+  * the program will abort at the very start and any call to this function
+  * will not be made.
+  *
+  * If the DYNAMIC_MOSQLIB macro is defined then the function will return
+  * false if the mosquitto library is not installed in the system or
+  * if it was impossible to assign any one of the library functions or
+  * procedures. Program execution will continue.
+  *}
+function mosquitto_lib_loaded(): boolean;
+
 {*
  * Function: mosquitto_lib_version
  *
@@ -185,8 +221,15 @@ type
  * See Also:
  * 	<mosquitto_lib_cleanup>, <mosquitto_lib_init>
  *}
-
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_lib_version(major: pcint; minor: pcint; revision: pcint): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibVersionFuction = function(major: pcint; minor: pcint; revision: pcint): cint; cdecl;
+var
+  mosquitto_lib_version:  TMosqLibVersionFuction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_lib_init
@@ -201,7 +244,15 @@ function mosquitto_lib_version(major: pcint; minor: pcint; revision: pcint): cin
  * See Also:
  * 	<mosquitto_lib_cleanup>, <mosquitto_lib_version>
  *}
-function mosquitto_lib_init: cint; cdecl; external libmosq_NAME;
+ {$IFNDEF DYNAMIC_MOSQLIB}
+ function mosquitto_lib_init: cint; cdecl; external libmosq_NAME;
+ {$ELSE}
+ Type
+   TMosqLibInitFunction = function(): cint; cdecl;
+ var
+   mosquitto_lib_init: TMosqLibInitFunction;
+ {$ENDIF}
+
 
 {*
  * Function: mosquitto_lib_cleanup
@@ -214,7 +265,15 @@ function mosquitto_lib_init: cint; cdecl; external libmosq_NAME;
  * See Also:
  * 	<mosquitto_lib_init>, <mosquitto_lib_version>
  *}
-function mosquitto_lib_cleanup: cint; cdecl; external libmosq_NAME;
+ {$IFNDEF DYNAMIC_MOSQLIB}
+ function mosquitto_lib_cleanup: cint; cdecl; external libmosq_NAME;
+ {$ELSE}
+ Type
+   TMosqLibCleanupFunction = function(): cint; cdecl;
+ var
+   mosquitto_lib_cleanup: TMosqLibCleanupFunction;
+ {$ENDIF}
+
 
 {*
  * Function: mosquitto_new
@@ -245,7 +304,17 @@ function mosquitto_lib_cleanup: cint; cdecl; external libmosq_NAME;
  * See Also:
  * 	<mosquitto_reinitialise>, <mosquitto_destroy>, <mosquitto_user_data_set>
  *}
+
+
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_new(const id: PChar; clean_session: cbool; obj: Pointer): Pmosquitto; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibNewFunction = function(const id: PChar; clean_session: cbool; obj: Pointer): Pmosquitto; cdecl;
+var
+  mosquitto_new: TMosqLibNewFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_destroy
@@ -258,7 +327,14 @@ function mosquitto_new(const id: PChar; clean_session: cbool; obj: Pointer): Pmo
  * See Also:
  * 	<mosquitto_new>, <mosquitto_reinitialise>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_destroy(mosq: Pmosquitto); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibDestroyProcedure = procedure(mosq: Pmosquitto); cdecl;
+var
+  mosquitto_destroy: TMosqLibDestroyProcedure;
+{$ENDIF}
 
 {*
  * Function: mosquitto_reinitialise
@@ -287,7 +363,15 @@ procedure mosquitto_destroy(mosq: Pmosquitto); cdecl; external libmosq_NAME;
  * See Also:
  * 	<mosquitto_new>, <mosquitto_destroy>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_reinitialise(mosq: Pmosquitto; const id: Pchar; clean_session: cbool; obj: Pointer): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibReinitialiseFunction = function(mosq: Pmosquitto; const id: Pchar; clean_session: cbool; obj: Pointer): cint; cdecl;
+var
+  mosquitto_reinitialise: TMosqLibReinitialiseFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_will_set
@@ -313,7 +397,14 @@ function mosquitto_reinitialise(mosq: Pmosquitto; const id: Pchar; clean_session
  * 	MOSQ_ERR_PAYLOAD_SIZE -   if payloadlen is too large.
  * 	MOSQ_ERR_MALFORMED_UTF8 - if the topic is not valid UTF-8.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_will_set(mosq: Pmosquitto; const topic: pchar; payloadlen: cint; const payload: pointer; qos: cint; retain: cbool): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibWillSetFunction = function (mosq: Pmosquitto; const topic: pchar; payloadlen: cint; const payload: pointer; qos: cint; retain: cbool): cint; cdecl;
+var
+  mosquitto_will_set: TMosqLibWillSetFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_will_clear
@@ -328,7 +419,14 @@ function mosquitto_will_set(mosq: Pmosquitto; const topic: pchar; payloadlen: ci
  * 	MOSQ_ERR_SUCCESS - on success.
  * 	MOSQ_ERR_INVAL -   if the input parameters were invalid.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_will_clear(mosq: Pmosquitto): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibWillClearFunction = function (mosq: Pmosquitto): cint; cdecl;
+var
+  mosquitto_will_clear: TMosqLibWillClearFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_username_pw_set
@@ -353,7 +451,14 @@ function mosquitto_will_clear(mosq: Pmosquitto): cint; cdecl; external libmosq_N
  * 	MOSQ_ERR_INVAL -   if the input parameters were invalid.
  * 	MOSQ_ERR_NOMEM -   if an out of memory condition occurred.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_username_pw_set(mosq: Pmosquitto; const username: pchar; const password: pchar): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibUsernamePwSetFunction = function (mosq: Pmosquitto; const username: pchar; const password: pchar): cint; cdecl;
+var
+  mosquitto_username_pw_set: TMosqLibUsernamePwSetFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_connect
@@ -379,7 +484,15 @@ function mosquitto_username_pw_set(mosq: Pmosquitto; const username: pchar; cons
  * See Also:
  * 	<mosquitto_connect_bind>, <mosquitto_connect_async>, <mosquitto_reconnect>, <mosquitto_disconnect>, <mosquitto_tls_set>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_connect(mosq: Pmosquitto; const host: pchar; port: cint; keepalive: cint): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibConnectFunction = function(mosq: Pmosquitto; const host: pchar; port: cint; keepalive: cint): cint; cdecl;
+var
+  mosquitto_connect: TMosqLibConnectFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_connect_bind
@@ -409,7 +522,14 @@ function mosquitto_connect(mosq: Pmosquitto; const host: pchar; port: cint; keep
  * See Also:
  * 	<mosquitto_connect>, <mosquitto_connect_async>, <mosquitto_connect_bind_async>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_connect_bind(mosq: Pmosquitto; const host: pchar; port: cint; keepalive: cint; const bind_address: pchar): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibConnectBindFunction = function(mosq: Pmosquitto; const host: pchar; port: cint; keepalive: cint; const bind_address: pchar): cint; cdecl;
+var
+  mosquitto_connect_bind: TMosqLibConnectBindFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_connect_async
@@ -440,8 +560,14 @@ function mosquitto_connect_bind(mosq: Pmosquitto; const host: pchar; port: cint;
  * See Also:
  * 	<mosquitto_connect_bind_async>, <mosquitto_connect>, <mosquitto_reconnect>, <mosquitto_disconnect>, <mosquitto_tls_set>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_connect_async(mosq: Pmosquitto; const host: pchar; port: cint; keepalive: cint): cint; cdecl; external libmosq_NAME;
-
+{$ELSE}
+type
+  TMosqLibConnectAsyncFunction = function(mosq: Pmosquitto; const host: pchar; port: cint; keepalive: cint): cint; cdecl;
+var
+  mosquitto_connect_async: TMosqLibConnectAsyncFunction;
+{$ENDIF}
 {*
  * Function: mosquitto_connect_bind_async
  *
@@ -477,7 +603,14 @@ function mosquitto_connect_async(mosq: Pmosquitto; const host: pchar; port: cint
  * See Also:
  * 	<mosquitto_connect_async>, <mosquitto_connect>, <mosquitto_connect_bind>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_connect_bind_async(mosq: Pmosquitto; const host: pchar; port: cint; keepalive: cint; const bind_address: pchar): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibConnectBindAsyncFunction = function(mosq: Pmosquitto; const host: pchar; port: cint; keepalive: cint): cint; cdecl;
+var
+  mosquitto_connect_bind_async: TMosqLibConnectBindAsyncFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_connect_srv
@@ -513,7 +646,14 @@ function mosquitto_connect_bind_async(mosq: Pmosquitto; const host: pchar; port:
  * See Also:
  * 	<mosquitto_connect_async>, <mosquitto_connect>, <mosquitto_connect_bind>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_connect_srv(mosq: Pmosquitto; const host: pchar; keepalive: cint; const bind_address: pchar): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibConnectSrvFunction = function(mosq: Pmosquitto; const host: pchar; keepalive: cint; const bind_address: pchar): cint; cdecl;
+var
+  mosquitto_connect_srv: TMosqLibConnectSrvFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_reconnect
@@ -544,7 +684,14 @@ function mosquitto_connect_srv(mosq: Pmosquitto; const host: pchar; keepalive: c
  * See Also:
  * 	<mosquitto_connect>, <mosquitto_disconnect>, <mosquitto_reconnect_async>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_reconnect(mosq: Pmosquitto): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibReconnectFunction = function(mosq: Pmosquitto): cint; cdecl;
+var
+  mosquitto_reconnect: TMosqLibReconnectFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_reconnect_async
@@ -575,7 +722,14 @@ function mosquitto_reconnect(mosq: Pmosquitto): cint; cdecl; external libmosq_NA
  * See Also:
  * 	<mosquitto_connect>, <mosquitto_disconnect>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_reconnect_async(mosq: Pmosquitto): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibReconnectAsyncFunction = function(mosq: Pmosquitto): cint; cdecl;
+var
+  mosquitto_reconnect_async: TMosqLibReconnectAsyncFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_disconnect
@@ -590,7 +744,14 @@ function mosquitto_reconnect_async(mosq: Pmosquitto): cint; cdecl; external libm
  * 	MOSQ_ERR_INVAL -   if the input parameters were invalid.
  * 	MOSQ_ERR_NO_CONN -  if the client isn't connected to a broker.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_disconnect(mosq: Pmosquitto): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibDisconnectFunction = function(mosq: Pmosquitto): cint; cdecl;
+var
+  mosquitto_disconnect: TMosqLibDisconnectFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_publish
@@ -627,7 +788,14 @@ function mosquitto_disconnect(mosq: Pmosquitto): cint; cdecl; external libmosq_N
  * See Also:
  *	<mosquitto_max_inflight_messages_set>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_publish(mosq: Pmosquitto; mid: pcint; const topic: pchar; payloadlen: cint; const payload: pointer; qos: cint; retain: cbool): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibPublishFunction = function(mosq: Pmosquitto; mid: pcint; const topic: pchar; payloadlen: cint; const payload: pointer; qos: cint; retain: cbool): cint; cdecl;
+var
+  mosquitto_publish: TMosqLibPublishFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_subscribe
@@ -650,7 +818,14 @@ function mosquitto_publish(mosq: Pmosquitto; mid: pcint; const topic: pchar; pay
  * 	MOSQ_ERR_NO_CONN -        if the client isn't connected to a broker.
  * 	MOSQ_ERR_MALFORMED_UTF8 - if the topic is not valid UTF-8
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_subscribe(mosq: Pmosquitto; mid: pcint; const sub: pchar; qos: cint): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibSubscribeFunction = function(mosq: Pmosquitto; mid: pcint; const sub: pchar; qos: cint): cint; cdecl;
+var
+  mosquitto_subscribe: TMosqLibSubscribeFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_unsubscribe
@@ -672,7 +847,14 @@ function mosquitto_subscribe(mosq: Pmosquitto; mid: pcint; const sub: pchar; qos
  * 	MOSQ_ERR_NO_CONN -        if the client isn't connected to a broker.
  * 	MOSQ_ERR_MALFORMED_UTF8 - if the topic is not valid UTF-8
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_unsubscribe(mosq: Pmosquitto; mid: pcint; const sub: pchar): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibUnsubscribeFunction = function(mosq: Pmosquitto; mid: pcint; const sub: pchar): cint; cdecl;
+var
+  mosquitto_unsubscribe: TMosqLibUnsubscribeFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_message_copy
@@ -692,7 +874,14 @@ function mosquitto_unsubscribe(mosq: Pmosquitto; mid: pcint; const sub: pchar): 
  * See Also:
  * 	<mosquitto_message_free>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_message_copy(dst: Pmosquitto_message; const src: Pmosquitto_message): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibMessageCopyFunction = function(dst: Pmosquitto_message; const src: Pmosquitto_message): cint; cdecl;
+var
+  mosquitto_message_copy: TMosqLibMessageCopyFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_message_free
@@ -705,7 +894,14 @@ function mosquitto_message_copy(dst: Pmosquitto_message; const src: Pmosquitto_m
  * See Also:
  * 	<mosquitto_message_copy>, <mosquitto_message_free_contents>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_message_free(message: PPmosquitto_message); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibMessageFreeProcedure = procedure(mosquitto_message: Pmosquitto_message); cdecl;
+var
+  mosquitto_message_free: TMosqLibMessageFreeProcedure;
+{$ENDIF}
 
 {*
  * Function: mosquitto_message_free_contents
@@ -718,7 +914,14 @@ procedure mosquitto_message_free(message: PPmosquitto_message); cdecl; external 
  * See Also:
  * 	<mosquitto_message_copy>, <mosquitto_message_free>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_message_free_contents(mosquitto_message: Pmosquitto_message); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibMessageFreeContentsProcedure = procedure(mosquitto_message: Pmosquitto_message); cdecl;
+var
+  mosquitto_message_free_contents: TMosqLibMessageFreeContentsProcedure;
+{$ENDIF}
 
 {*
  * Function: mosquitto_loop
@@ -764,7 +967,15 @@ procedure mosquitto_message_free_contents(mosquitto_message: Pmosquitto_message)
  * See Also:
  *	<mosquitto_loop_forever>, <mosquitto_loop_start>, <mosquitto_loop_stop>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_loop(mosq: Pmosquitto; timeout: cint; max_packets: cint): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibLoopFunction = function(mosq: Pmosquitto; timeout: cint; max_packets: cint): cint; cdecl;
+var
+  mosquitto_loop: TMosqLibLoopFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_loop_forever
@@ -800,7 +1011,14 @@ function mosquitto_loop(mosq: Pmosquitto; timeout: cint; max_packets: cint): cin
  * See Also:
  *	<mosquitto_loop>, <mosquitto_loop_start>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_loop_forever(mosq: Pmosquitto; timeout: cint; max_packets: cint): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibLoopForeverFunction = function(mosq: Pmosquitto; timeout: cint; max_packets: cint): cint; cdecl;
+var
+  mosquitto_loop_forever: TMosqLibLoopForeverFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_loop_start
@@ -820,7 +1038,15 @@ function mosquitto_loop_forever(mosq: Pmosquitto; timeout: cint; max_packets: ci
  * See Also:
  *	<mosquitto_connect_async>, <mosquitto_loop>, <mosquitto_loop_forever>, <mosquitto_loop_stop>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_loop_start(mosq: Pmosquitto): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibLoopStartFunction = function(mosq: Pmosquitto): cint; cdecl;
+var
+  mosquitto_loop_start: TMosqLibLoopStartFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_loop_stop
@@ -844,7 +1070,15 @@ function mosquitto_loop_start(mosq: Pmosquitto): cint; cdecl; external libmosq_N
  * See Also:
  *	<mosquitto_loop>, <mosquitto_loop_start>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_loop_stop(mosq: Pmosquitto; force: cbool): cint; cdecl external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibLoopStopFunction = function(mosq: Pmosquitto; force: cbool): cint; cdecl;
+var
+  mosquitto_loop_stop: TMosqLibLoopStopFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_socket
@@ -858,7 +1092,15 @@ function mosquitto_loop_stop(mosq: Pmosquitto; force: cbool): cint; cdecl extern
  * Returns:
  *	The socket for the mosquitto client or -1 on failure.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_socket(mosq: Pmosquitto): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+type
+  TMosqLibSocketFunction = function(mosq: Pmosquitto): cint; cdecl;
+var
+  mosquitto_socket: TMosqLibSocketFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_loop_read
@@ -888,7 +1130,14 @@ function mosquitto_socket(mosq: Pmosquitto): cint; cdecl; external libmosq_NAME;
  * See Also:
  *	<mosquitto_socket>, <mosquitto_loop_write>, <mosquitto_loop_misc>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_loop_read(mosq: Pmosquitto; max_packets: cint): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibLoopReadFunction = function(mosq: Pmosquitto; max_packets: cint): cint; cdecl;
+var
+  mosquitto_loop_read: TMosqLibLoopReadFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_loop_write
@@ -918,7 +1167,14 @@ function mosquitto_loop_read(mosq: Pmosquitto; max_packets: cint): cint; cdecl; 
  * See Also:
  *	<mosquitto_socket>, <mosquitto_loop_read>, <mosquitto_loop_misc>, <mosquitto_want_write>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_loop_write(mosq: Pmosquitto; max_packets: cint): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibLoopWriteFunction = function(mosq: Pmosquitto; max_packets: cint): cint; cdecl;
+var
+  mosquitto_loop_write: TMosqLibLoopWriteFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_loop_misc
@@ -941,7 +1197,14 @@ function mosquitto_loop_write(mosq: Pmosquitto; max_packets: cint): cint; cdecl;
  * See Also:
  *	<mosquitto_socket>, <mosquitto_loop_read>, <mosquitto_loop_write>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_loop_misc(mosq: Pmosquitto): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibLoopMiscFunction = function(mosq: Pmosquitto): cint; cdecl;
+var
+  mosquitto_loop_misc: TMosqLibLoopMiscFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_want_write
@@ -954,7 +1217,15 @@ function mosquitto_loop_misc(mosq: Pmosquitto): cint; cdecl; external libmosq_NA
  * See Also:
  *	<mosquitto_socket>, <mosquitto_loop_read>, <mosquitto_loop_write>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_want_write(mosq: Pmosquitto): cbool; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibWantWriteFunction = function(mosq: Pmosquitto): cbool; cdecl;
+var
+  mosquitto_want_write: TMosqLibWantWriteFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_threaded_set
@@ -971,7 +1242,14 @@ function mosquitto_want_write(mosq: Pmosquitto): cbool; cdecl; external libmosq_
  *  mosq -     a valid mosquitto instance.
  *  threaded - true if your application is using threads, false otherwise.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_threaded_set(mosq: Pmosquitto; threaded: cbool): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibThreadedSetFunction = function(mosq: Pmosquitto; threaded: cbool): cint; cdecl;
+var
+  mosquitto_threaded_set: TMosqLibThreadedSetFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_opts_set
@@ -1008,8 +1286,14 @@ function mosquitto_threaded_set(mosq: Pmosquitto; threaded: cbool): cint; cdecl;
  *	          as a minimum.
  *	          This option is only available for openssl 1.1.0 and higher.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_opts_set(mosq: Pmosquitto; option: cint; value: pointer): cint; cdecl; external libmosq_NAME;
-
+{$ELSE}
+Type
+  TMosqLibOptsSetFunction = function(mosq: Pmosquitto; option: cint; value: pointer): cint; cdecl;
+var
+  mosquitto_opts_set: TMosqLibOptsSetFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_tls_set
@@ -1062,10 +1346,21 @@ function mosquitto_opts_set(mosq: Pmosquitto; option: cint; value: pointer): cin
 type
     Tpw_callback = function(buf: pchar; size: cint; rwflag: cint; userdata: pointer): cint; cdecl;
 
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_tls_set(mosq: Pmosquitto;
 		const cafile: pchar; const capath: pchar;
 		const certfile: pchar; const keyfile: pchar;
 		pw_callback: Tpw_callback): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibTlsSetFunction = function(mosq: Pmosquitto;
+		const cafile: pchar; const capath: pchar;
+		const certfile: pchar; const keyfile: pchar;
+		pw_callback: Tpw_callback): cint; cdecl;
+var
+  mosquitto_tls_set: TMosqLibTlsSetFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_tls_insecure_set
@@ -1092,7 +1387,14 @@ function mosquitto_tls_set(mosq: Pmosquitto;
  * See Also:
  *	<mosquitto_tls_set>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_tls_insecure_set(mosq: Pmosquitto; value: cbool): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+type
+  TMosqLibTlsInsecureSetFunction = function (mosq: Pmosquitto; value: cbool): cint; cdecl;
+var
+  mosquitto_tls_insecure_set: TMosqLibTlsInsecureSetFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_tls_opts_set
@@ -1126,7 +1428,15 @@ function mosquitto_tls_insecure_set(mosq: Pmosquitto; value: cbool): cint; cdecl
  * See Also:
  *	<mosquitto_tls_set>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_tls_opts_set(mosq: Pmosquitto; cert_reqs: cint; const tls_version: pchar; const ciphers: pchar): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibTlsOptsSetFunction = function(mosq: Pmosquitto; cert_reqs: cint; const tls_version: pchar; const ciphers: pchar): cint; cdecl;
+var
+  mosquitto_tls_opts_set: TMosqLibTlsOptsSetFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_tls_psk_set
@@ -1153,7 +1463,14 @@ function mosquitto_tls_opts_set(mosq: Pmosquitto; cert_reqs: cint; const tls_ver
  * See Also:
  *	<mosquitto_tls_set>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_tls_psk_set(mosq: Pmosquitto; const psk: pchar; const identity: pchar; const ciphers: pchar): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibTlsPskSetFunction = function(mosq: Pmosquitto; const psk: pchar; const identity: pchar; const ciphers: pchar): cint; cdecl;
+var
+  mosquitto_tls_psk_set: TMosqLibTlsPskSetFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_connect_callback_set
@@ -1180,7 +1497,15 @@ function mosquitto_tls_psk_set(mosq: Pmosquitto; const psk: pchar; const identit
 type
     Ton_connect_callback = procedure(mosq: Pmosquitto; obj: pointer; rc: cint); cdecl;
 
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_connect_callback_set(mosq: Pmosquitto; on_connect: Ton_connect_callback); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibConnectCallbackSetProcedure = procedure(mosq: Pmosquitto; on_connect: Ton_connect_callback); cdecl;
+var
+  mosquitto_connect_callback_set: TMosqLibConnectCallbackSetProcedure;
+{$ENDIF}
+
 
 
 {*
@@ -1209,7 +1534,15 @@ procedure mosquitto_connect_callback_set(mosq: Pmosquitto; on_connect: Ton_conne
 type
     Ton_connect_with_flags_callback = procedure(mosq: Pmosquitto; obj: pointer; _unknown1: cint; _unknown2: cint); cdecl;
 
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_connect_with_flags_callback_set(mosq: Pmosquitto; on_connect: Ton_connect_with_flags_callback); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibConnectWithFlagsCallbackSetProcedure = procedure(mosq: Pmosquitto; on_connect: Ton_connect_with_flags_callback); cdecl;
+var
+  mosquitto_connect_with_flags_callback_set: TMosqLibConnectWithFlagsCallbackSetProcedure;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_disconnect_callback_set
@@ -1232,8 +1565,16 @@ procedure mosquitto_connect_with_flags_callback_set(mosq: Pmosquitto; on_connect
 type
     Ton_disconnect_callback = procedure(mosq: Pmosquitto; obj: pointer; rc: cint); cdecl;
 
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_disconnect_callback_set(mosq: Pmosquitto; on_disconnect: Ton_disconnect_callback); cdecl; external libmosq_NAME;
- 
+{$ELSE}
+Type
+  TMosqLibDisconnectCallbackSetProcedure = procedure(mosq: Pmosquitto; on_disconnect: Ton_disconnect_callback); cdecl;
+var
+  mosquitto_disconnect_callback_set: TMosqLibDisconnectCallbackSetProcedure;
+{$ENDIF}
+
+
 {*
  * Function: mosquitto_publish_callback_set
  *
@@ -1253,7 +1594,14 @@ procedure mosquitto_disconnect_callback_set(mosq: Pmosquitto; on_disconnect: Ton
 type
     Ton_publish_callback = procedure(mosq: Pmosquitto; obj: pointer; rc: cint); cdecl;
 
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_publish_callback_set(mosq: Pmosquitto; on_publish: Ton_publish_callback); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibPublishCallbackSetProcedure = procedure(mosq: Pmosquitto; on_publish: Ton_publish_callback); cdecl;
+var
+  mosquitto_publish_callback_set: TMosqLibPublishCallbackSetProcedure;
+{$ENDIF}
 
 {*
  * Function: mosquitto_message_callback_set
@@ -1279,7 +1627,14 @@ procedure mosquitto_publish_callback_set(mosq: Pmosquitto; on_publish: Ton_publi
 type
     Ton_message_callback = procedure(mosq: Pmosquitto; obj: pointer; const message: Pmosquitto_message); cdecl;
 
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_message_callback_set(mosq: Pmosquitto; on_message: Ton_message_callback); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibMessageCallbackSetProcedure = procedure(mosq: Pmosquitto; on_message: Ton_message_callback); cdecl;
+var
+  mosquitto_message_callback_set: TMosqLibMessageCallbackSetProcedure;
+{$ENDIF}
 
 {*
  * Function: mosquitto_subscribe_callback_set
@@ -1303,7 +1658,15 @@ procedure mosquitto_message_callback_set(mosq: Pmosquitto; on_message: Ton_messa
 type
     Ton_subscribe_callback = procedure(mosq: Pmosquitto; obj: pointer; mid: cint; qos_count: cint; const granted_qos: pcint); cdecl;
 
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_subscribe_callback_set(mosq: Pmosquitto; on_subscribe: Ton_subscribe_callback); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibSubscribeCallbackSetProcedure = procedure(mosq: Pmosquitto; on_subscribe: Ton_subscribe_callback); cdecl;
+var
+  mosquitto_subscribe_callback_set: TMosqLibSubscribeCallbackSetProcedure;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_unsubscribe_callback_set
@@ -1324,7 +1687,15 @@ procedure mosquitto_subscribe_callback_set(mosq: Pmosquitto; on_subscribe: Ton_s
 type
     Ton_unsubscribe_callback = procedure(mosq: Pmosquitto; obj: pointer; mid: cint); cdecl;
 
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_unsubscribe_callback_set(mosq: Pmosquitto; on_unsubscribe: Ton_unsubscribe_callback); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibUnsubscribeCallbackSetProcedure = procedure(mosq: Pmosquitto; on_unsubscribe: Ton_unsubscribe_callback); cdecl;
+var
+  mosquitto_unsubscribe_callback_set: TMosqLibUnsubscribeCallbackSetProcedure;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_log_callback_set
@@ -1350,7 +1721,14 @@ procedure mosquitto_unsubscribe_callback_set(mosq: Pmosquitto; on_unsubscribe: T
 type
     Ton_log_callback = procedure(mosq: Pmosquitto; obj: pointer; level: cint; const str: pchar); cdecl;
 
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_log_callback_set(mosq: Pmosquitto; on_log: Ton_log_callback); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibLogCallbackSetProcedure = procedure(mosq: Pmosquitto; on_log: Ton_log_callback); cdecl;
+var
+  mosquitto_log_callback_set: TMosqLibLogCallbackSetProcedure;
+{$ENDIF}
 
 {*
  * Function: mosquitto_reconnect_delay_set
@@ -1387,7 +1765,15 @@ procedure mosquitto_log_callback_set(mosq: Pmosquitto; on_log: Ton_log_callback)
  *	MOSQ_ERR_SUCCESS - on success.
  * 	MOSQ_ERR_INVAL -   if the input parameters were invalid.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_reconnect_delay_set(mosq: Pmosquitto; reconnect_delay: cuint; reconnect_delay_max: cuint; reconnect_exponential_backoff: cbool): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibReconnectDelaySetFunction = function(mosq: Pmosquitto; reconnect_delay: cuint; reconnect_delay_max: cuint; reconnect_exponential_backoff: cbool): cint; cdecl;
+var
+  mosquitto_reconnect_delay_set: TMosqLibReconnectDelaySetFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_max_inflight_messages_set
@@ -1412,14 +1798,30 @@ function mosquitto_reconnect_delay_set(mosq: Pmosquitto; reconnect_delay: cuint;
  *	MOSQ_ERR_SUCCESS - on success.
  * 	MOSQ_ERR_INVAL -   if the input parameters were invalid.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_max_inflight_messages_set(mosq: Pmosquitto; max_inflight_messages: cuint): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibMaxInflightMessagesSetFunction = function(mosq: Pmosquitto; max_inflight_messages: cuint): cint; cdecl;
+var
+  mosquitto_max_inflight_messages_set: TMosqLibMaxInflightMessagesSetFunction;
+{$ENDIF}
 
-{*
+{
+ *
  * Function: mosquitto_message_retry_set
  *
  * This function now has no effect.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_message_retry_set(mosq: Pmosquitto; message_retry: cuint); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibMessageRetrySetProcedure = procedure(mosq: Pmosquitto; message_retry: cuint); cdecl;
+var
+  mosquitto_message_retry_set: TMosqLibMessageRetrySetProcedure;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_user_data_set
@@ -1435,7 +1837,15 @@ procedure mosquitto_message_retry_set(mosq: Pmosquitto; message_retry: cuint); c
  * 	obj -  A user pointer that will be passed as an argument to any callbacks
  * 	       that are specified.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 procedure mosquitto_user_data_set(mosq: Pmosquitto; obj: pointer); cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibUserDataSetProcedure = procedure(mosq: Pmosquitto; obj: pointer); cdecl;
+var
+  mosquitto_user_data_set: TMosqLibUserDataSetProcedure;
+{$ENDIF}
+
 
 {* =============================================================================
  *
@@ -1459,7 +1869,14 @@ procedure mosquitto_user_data_set(mosq: Pmosquitto; obj: pointer); cdecl; extern
  *   password - if not NULL and username is not NULL, use this password when
  *              authenticating with the proxy.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_socks5_set(mosq: Pmosquitto; const host: pchar; port: cint; const username: pchar; const password: pchar): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibSocks5SetFunction = function (mosq: Pmosquitto; const host: pchar; port: cint; const username: pchar; const password: pchar): cint; cdecl;
+var
+  mosquitto_socks5_set: TMosqLibSocks5SetFunction;
+{$ENDIF}
 
 {* =============================================================================
  *
@@ -1479,7 +1896,15 @@ function mosquitto_socks5_set(mosq: Pmosquitto; const host: pchar; port: cint; c
  * Returns:
  *	A constant string describing the error.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_strerror(mosq_errno: cint): pchar; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibStrerrorFunction = function(mosq_errno: cint): pchar; cdecl;
+var
+  mosquitto_strerror: TMosqLibStrerrorFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_connack_string
@@ -1492,7 +1917,14 @@ function mosquitto_strerror(mosq_errno: cint): pchar; cdecl; external libmosq_NA
  * Returns:
  *	A constant string describing the result.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_connack_string(connack_code: cint): pchar; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibConnackStringFunction = function(connack_code: cint): pchar; cdecl;
+var
+  mosquitto_connack_string: TMosqLibConnackStringFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_sub_topic_tokenise
@@ -1548,7 +1980,14 @@ function mosquitto_connack_string(connack_code: cint): pchar; cdecl; external li
  * See Also:
  *	<mosquitto_sub_topic_tokens_free>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_sub_topic_tokenise(const subtopic: pchar; var topics: ppchar; count: pcint): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibSubTopicTokeniseFunction = function(const subtopic: pchar; var topics: ppchar; count: pcint): cint; cdecl;
+var
+  mosquitto_sub_topic_tokenise: TMosqLibSubTopicTokeniseFunction;
+{$ENDIF}
 
 {*
  * Function: mosquitto_sub_topic_tokens_free
@@ -1566,8 +2005,14 @@ function mosquitto_sub_topic_tokenise(const subtopic: pchar; var topics: ppchar;
  * See Also:
  *	<mosquitto_sub_topic_tokenise>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_sub_topic_tokens_free(var topics: ppchar; count: cint): cint; cdecl; external libmosq_NAME;
-
+{$ELSE}
+Type
+  TMosqLibSubTopicTokensFreeFunction = function(var topics: ppchar; count: cint): cint; cdecl;
+var
+  mosquitto_sub_topic_tokens_free: TMosqLibSubTopicTokensFreeFunction;
+{$ENDIF}
 {*
  * Function: mosquitto_topic_matches_sub
  * Function: mosquitto_topic_matches_sub2
@@ -1592,8 +2037,24 @@ function mosquitto_sub_topic_tokens_free(var topics: ppchar; count: cint): cint;
  * 	MOSQ_ERR_INVAL -   if the input parameters were invalid.
  * 	MOSQ_ERR_NOMEM -   if an out of memory condition occurred.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_topic_matches_sub(const sub: pchar; const topic: pchar; result: pcbool): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibTopicMatchesSubFunction = function(const sub: pchar; const topic: pchar; result: pcbool): cint; cdecl;
+var
+  mosquitto_topic_matches_sub:  TMosqLibTopicMatchesSubFunction;
+{$ENDIF}
+
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_topic_matches_sub2(const sub: pchar; sublen: csize_t; const topic: pchar; topiclen: csize_t; result: pcbool): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibTopicMatchesSub2Function = function(const sub: pchar; sublen: csize_t; const topic: pchar; topiclen: csize_t; result: pcbool): cint; cdecl;
+var
+  mosquitto_topic_matches_sub2:  TMosqLibTopicMatchesSub2Function;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_pub_topic_check
@@ -1619,8 +2080,23 @@ function mosquitto_topic_matches_sub2(const sub: pchar; sublen: csize_t; const t
  * See Also:
  *   <mosquitto_sub_topic_check>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_pub_topic_check(const topic: pchar): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+ TMosqLibPubTopicCheckFunction = function(const topic: pchar): cint; cdecl;
+var
+ mosquitto_pub_topic_check: TMosqLibPubTopicCheckFunction;
+{$ENDIF}
+
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_pub_topic_check2(const topic: pchar; topiclen: csize_t): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibPubTopicCheck2Function = function(const topic: pchar; topiclen: csize_t): cint; cdecl;
+var
+  mosquitto_pub_topic_check2: TMosqLibPubTopicCheck2Function;
+{$ENDIF}
 
 {*
  * Function: mosquitto_sub_topic_check
@@ -1649,8 +2125,24 @@ function mosquitto_pub_topic_check2(const topic: pchar; topiclen: csize_t): cint
  * See Also:
  *   <mosquitto_sub_topic_check>
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_sub_topic_check(const topic: pchar): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+ TMosqLibSubTopicCheckFunction = function(const topic: pchar): cint; cdecl;
+var
+ mosquitto_sub_topic_check: TMosqLibSubTopicCheckFunction;
+{$ENDIF}
+
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_sub_topic_check2(const topic: pchar; topiclen: csize_t): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibSubTopicCheck2Function = function(const topic: pchar; topiclen: csize_t): cint; cdecl;
+var
+  mosquitto_sub_topic_check2: TMosqLibSubTopicCheck2Function;
+{$ENDIF}
+
 
 
 type
@@ -1724,6 +2216,7 @@ type
  *   MOSQ_ERR_SUCCESS - on success
  *   >0 - on error.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_subscribe_simple(messages: PPmosquitto_message;
                                     msg_count: cint;
                                     want_retained: cbool;
@@ -1738,6 +2231,26 @@ function mosquitto_subscribe_simple(messages: PPmosquitto_message;
                                     const password: pchar;
                                     const will: Plibmosquitto_will;
                                     const tls: Plibmosquitto_tls): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibSubscribeSimpleFunction = function(messages: PPmosquitto_message;
+                                      msg_count: cint;
+                                      want_retained: cbool;
+                                      const topic: pchar;
+                                      qos: cint;
+                                      const host: pchar;
+                                      port: cint;
+                                      const client_id: pchar;
+                                      keepalive: cint;
+                                      clean_session: cbool;
+                                      const username: pchar;
+                                      const password: pchar;
+                                      const will: Plibmosquitto_will;
+                                      const tls: Plibmosquitto_tls): cint; cdecl;
+var
+   mosquitto_subscribe_simple: TMosqLibSubscribeSimpleFunction;
+{$ENDIF}
+
 
 {*
  * Function: mosquitto_subscribe_callback
@@ -1775,6 +2288,8 @@ function mosquitto_subscribe_simple(messages: PPmosquitto_message;
  *   MOSQ_ERR_SUCCESS - on success
  *   >0 - on error.
  *}
+
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_subscribe_callback(callback: Ton_message_callback;
                                       userdata: pointer;
                                       const topic: pchar;
@@ -1788,7 +2303,26 @@ function mosquitto_subscribe_callback(callback: Ton_message_callback;
                                       const password: pchar;
                                       const will: Plibmosquitto_will;
                                       const tls: Plibmosquitto_tls): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibSubscribeCallbackFunction = function(callback: Ton_message_callback;
+                                      userdata: pointer;
+                                      const topic: pchar;
+                                      qos: cint;
+                                      const host: pchar;
+                                      port: cint;
+                                      const client_id: pchar;
+                                      keepalive: cint;
+                                      clean_session: cbool;
+                                      const username: pchar;
+                                      const password: pchar;
+                                      const will: Plibmosquitto_will;
+                                      const tls: Plibmosquitto_tls): cint; cdecl;
+var
+  mosquitto_subscribe_callback:  TMosqLibSubscribeCallbackFunction;
+{$ENDIF}
 
+//
 {*
  * Function: mosquitto_validate_utf8
  *
@@ -1804,7 +2338,14 @@ function mosquitto_subscribe_callback(callback: Ton_message_callback;
  *   MOSQ_ERR_INVAL -          if str is NULL or len<0 or len>65536
  *   MOSQ_ERR_MALFORMED_UTF8 - if str is not valid UTF-8
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_validate_utf8(const str: pchar; len: cint): cint; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibValidateUtf8Function = function(const str: pchar; len: cint): cint; cdecl;
+var
+  mosquitto_validate_utf8: TMosqLibValidateUtf8Function;
+{$ENDIF}
 
 {* Function: mosquitto_userdata
  *
@@ -1816,9 +2357,134 @@ function mosquitto_validate_utf8(const str: pchar; len: cint): cint; cdecl; exte
  * Returns:
  *	A pointer to the userdata member variable.
  *}
+{$IFNDEF DYNAMIC_MOSQLIB}
 function mosquitto_userdata(mosq: Pmosquitto): pointer; cdecl; external libmosq_NAME;
+{$ELSE}
+Type
+  TMosqLibUserdataFunction = function(mosq: Pmosquitto): pointer; cdecl;
+var
+  mosquitto_userdata: TMosqLibUserdataFunction;
+{$ENDIF}
 
 
 implementation
 
+{$IFNDEF DYNAMIC_MOSQLIB}
+
+function mosquitto_lib_loaded(): boolean;
+begin
+  mosquitto_lib_loaded := true;
+end;
+
+{$ELSE}
+
+var
+  lib: TLibHandle;
+
+function mosquitto_lib_loaded(): boolean;
+begin
+  mosquitto_lib_loaded := lib <> NilHandle
+end;
+
+
+(*
+function GetLibProc(var aPointer; const name: string): boolean;
+begin
+  try
+    pointer(aPointer) := GetProcedureAddress(lib, name);
+    result := assigned(pointer(aPointer));
+  except
+    result := false;
+  end;
+  if not result then begin
+    if unloadLibrary(lib) then
+      lib := NilHandle;
+  end;
+end;
+*)
+
+function GetLibProc(var aPointer; const name: string): boolean;
+begin
+  pointer(aPointer) := GetProcedureAddress(lib, name);
+  if pointer(aPointer) <> nil then
+    GetLibProc := true
+  else begin
+    unloadLibrary(lib);
+    lib := NilHandle;
+    GetLibProc := false;
+  end;
+end;
+
+initialization
+  lib := SafeLoadLibrary(libmosq_NAME);
+  if lib <> NilHandle then begin
+    if not GetLibProc(mosquitto_lib_version, 'mosquitto_lib_version') then exit;
+    if not GetLibProc(mosquitto_lib_init, 'mosquitto_lib_init') then exit;
+    if not GetLibProc(mosquitto_lib_cleanup, 'mosquitto_lib_cleanup') then exit;
+    if not GetLibProc(mosquitto_new, 'mosquitto_new') then exit;
+    if not GetLibProc(mosquitto_destroy, 'mosquitto_destroy') then exit;
+    if not GetLibProc(mosquitto_reinitialise, 'mosquitto_reinitialise') then exit;
+    if not GetLibProc(mosquitto_will_set, 'mosquitto_will_set') then exit;
+    if not GetLibProc(mosquitto_will_clear, 'mosquitto_will_clear') then exit;
+    if not GetLibProc(mosquitto_username_pw_set, 'mosquitto_username_pw_set') then exit;
+    if not GetLibProc(mosquitto_connect, 'mosquitto_connect') then exit;
+    if not GetLibProc(mosquitto_connect_bind, 'mosquitto_connect_bind') then exit;
+    if not GetLibProc(mosquitto_connect_async, 'mosquitto_connect_async') then exit;
+    if not GetLibProc(mosquitto_connect_bind_async, 'mosquitto_connect_bind_async') then exit;
+    if not GetLibProc(mosquitto_connect_srv, 'mosquitto_connect_srv') then exit;
+    if not GetLibProc(mosquitto_reconnect, 'mosquitto_reconnect') then exit;
+    if not GetLibProc(mosquitto_reconnect_async, 'mosquitto_reconnect_async') then exit;
+    if not GetLibProc(mosquitto_disconnect, 'mosquitto_disconnect') then exit;
+    if not GetLibProc(mosquitto_publish, 'mosquitto_publish') then exit;
+    if not GetLibProc(mosquitto_subscribe, 'mosquitto_subscribe') then exit;
+    if not GetLibProc(mosquitto_unsubscribe, 'mosquitto_unsubscribe') then exit;
+    if not GetLibProc(mosquitto_message_copy, 'mosquitto_message_copy') then exit;
+    if not GetLibProc(mosquitto_message_free, 'mosquitto_message_free') then exit;
+    if not GetLibProc(mosquitto_message_free_contents, 'mosquitto_message_free_contents') then exit;
+    if not GetLibProc(mosquitto_loop, 'mosquitto_loop') then exit;
+    if not GetLibProc(mosquitto_loop_forever, 'mosquitto_loop_forever') then exit;
+    if not GetLibProc(mosquitto_loop_start, 'mosquitto_loop_start') then exit;
+    if not GetLibProc(mosquitto_loop_stop, 'mosquitto_loop_stop') then exit;
+    if not GetLibProc(mosquitto_loop_read, 'mosquitto_loop_read') then exit;
+    if not GetLibProc(mosquitto_loop_write, 'mosquitto_loop_write') then exit;
+    if not GetLibProc(mosquitto_loop_misc, 'mosquitto_loop_misc') then exit;
+    if not GetLibProc(mosquitto_socket, 'mosquitto_socket') then exit;
+    if not GetLibProc(mosquitto_want_write, 'mosquitto_want_write') then exit;
+    if not GetLibProc(mosquitto_opts_set, 'mosquitto_opts_set') then exit;
+    if not GetLibProc(mosquitto_threaded_set, 'mosquitto_threaded_set') then exit;
+    if not GetLibProc(mosquitto_tls_set, 'mosquitto_tls_set') then exit;
+    if not GetLibProc(mosquitto_tls_insecure_set, 'mosquitto_tls_insecure_set') then exit;
+    if not GetLibProc(mosquitto_tls_opts_set, 'mosquitto_tls_opts_set') then exit;
+    if not GetLibProc(mosquitto_tls_psk_set, 'mosquitto_tls_psk_set') then exit;
+    if not GetLibProc(mosquitto_connect_callback_set, 'mosquitto_connect_callback_set') then exit;
+    if not GetLibProc(mosquitto_connect_with_flags_callback_set, 'mosquitto_connect_with_flags_callback_set') then exit;
+    if not GetLibProc(mosquitto_disconnect_callback_set, 'mosquitto_disconnect_callback_set') then exit;
+    if not GetLibProc(mosquitto_publish_callback_set, 'mosquitto_publish_callback_set') then exit;
+    if not GetLibProc(mosquitto_message_callback_set, 'mosquitto_message_callback_set') then exit;
+    if not GetLibProc(mosquitto_subscribe_callback_set, 'mosquitto_subscribe_callback_set') then exit;
+    if not GetLibProc(mosquitto_unsubscribe_callback_set, 'mosquitto_unsubscribe_callback_set') then exit;
+    if not GetLibProc(mosquitto_log_callback_set, 'mosquitto_log_callback_set') then exit;
+    if not GetLibProc(mosquitto_reconnect_delay_set, 'mosquitto_reconnect_delay_set') then exit;
+    if not GetLibProc(mosquitto_max_inflight_messages_set, 'mosquitto_max_inflight_messages_set') then exit;
+    if not GetLibProc(mosquitto_message_retry_set, 'mosquitto_message_retry_set') then exit;
+    if not GetLibProc(mosquitto_user_data_set, 'mosquitto_user_data_set') then exit;
+    if not GetLibProc(mosquitto_socks5_set, 'mosquitto_socks5_set') then exit;
+    if not GetLibProc(mosquitto_strerror, 'mosquitto_strerror') then exit;
+    if not GetLibProc(mosquitto_connack_string, 'mosquitto_connack_string') then exit;
+    if not GetLibProc(mosquitto_sub_topic_tokens_free, 'mosquitto_sub_topic_tokens_free') then exit;
+    if not GetLibProc(mosquitto_topic_matches_sub, 'mosquitto_topic_matches_sub') then exit;
+    if not GetLibProc(mosquitto_topic_matches_sub2, 'mosquitto_topic_matches_sub2') then exit;
+    if not GetLibProc(mosquitto_pub_topic_check, 'mosquitto_pub_topic_check') then exit;
+    if not GetLibProc(mosquitto_pub_topic_check2, 'mosquitto_pub_topic_check2') then exit;
+    if not GetLibProc(mosquitto_sub_topic_check, 'mosquitto_sub_topic_check') then exit;
+    if not GetLibProc(mosquitto_sub_topic_check2, 'mosquitto_sub_topic_check2') then exit;
+    if not GetLibProc(mosquitto_subscribe_simple, 'mosquitto_subscribe_simple') then exit;
+    if not GetLibProc(mosquitto_subscribe_callback, 'mosquitto_subscribe_callback') then exit;
+    if not GetLibProc(mosquitto_validate_utf8, 'mosquitto_validate_utf8') then exit;
+    if not GetLibProc(mosquitto_userdata, 'mosquitto_userdata') then exit;
+  end;
+finalization
+  if lib <> NilHandle then
+    unloadLibrary(lib);
+{$ENDIF}
 end.
