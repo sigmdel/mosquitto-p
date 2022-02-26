@@ -40,12 +40,18 @@ loaded with the `mosquitto_lib_loaded()` function. That function always
 returns `True` when the library is statically linked and represents the only 
 change to the original library when `DYNAMIC_MOSQLIB` is not defined.
 
+Added an additional initial test for `mosquitto_lib_loaded` when setting the 
+`libinited` boolean in the `mqttclass initialisation` procedure. That way the
+`mosquitto_lib_init()` function will not be called if the `mosquitto`
+library was not found.
+
+Added `UnSubscribe` functions in `TMQTTConnection`. These were suggested
+by JacoFourie in issue #5: No Unsubscribe 2020-10-3.
+
 There must be an easier way to trap an error when a statically 
 linked library is not found or to test for the presence of the library
 before it is loaded. Anyone?
 
-Added `UnSubscribe` functions in `TMQTTConnection`. These were suggested
-by JacoFourie in issue #5: No Unsubscribe 2020-10-3.
 
 ### License
 

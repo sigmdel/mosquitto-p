@@ -553,7 +553,7 @@ begin
 end;
 
 initialization
-  libinited:=mosquitto_lib_init = MOSQ_ERR_SUCCESS;
+  libinited := mosquitto_lib_loaded and (mosquitto_lib_init() = MOSQ_ERR_SUCCESS);
   logger:=@mqtt_log;
 finalization
   if libinited then
