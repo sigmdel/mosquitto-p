@@ -1,0 +1,22 @@
+# .hgignore for project source
+#
+
+syntax: glob
+
+# some work directories
+lib/
+published/
+backup/
+
+# Archives
+*.zip
+*.gz
+*.tar*
+
+# Unneeded Lazarus files
+*.lps
+
+# any executable
+testmulti
+testmulti.ico
+testmulti.res
