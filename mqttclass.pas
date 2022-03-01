@@ -60,6 +60,7 @@ type
     reconnect_delay: longint;
     reconnect_backoff: boolean;
     client_id: ansistring;
+    retain_session: boolean; // = not clean_session
   end;
 
 type
@@ -166,13 +167,22 @@ end;
 constructor TMQTTConnection.Create(const name: String; const config: TMQTTConfig; const loglevel: cint);
 var
   rc: cint;
+  pName: PChar;
 begin
   inherited Create(true);
 
   FName:=name;
   FConfig:=config;
 
-  FMosquitto:=mosquitto_new(PChar(@FConfig.client_id[1]), true, self);
+  
+  if FConfig.client_id = '' then begin
+    pName := nil;
+    FConfig.retain_session := false;
+  end
+  else
+    pName := @FConfig.client_id[1];
+
+  FMosquitto:=mosquitto_new(pName, not FConfig.retain_session, self);
   if FMosquitto=nil then
     raise Exception.Create('mosquitto instance creation failure');
 
